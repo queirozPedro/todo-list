@@ -7,7 +7,8 @@
         html, body {
             margin: 0;
             padding: 0;
-            height: 100%; /* Adicione esta linha */
+            height: 100%;
+            overflow: hidden;
         }
         body {
             font-family: Arial, sans-serif;
@@ -43,8 +44,8 @@
             min-width: 0;
             margin: 0 auto;
             text-align: left;
-            max-height: 45vh; /* Altura máxima da lista */
-            min-height: 45vh; /* Altura máxima da lista */
+            max-height: 55vh; /* Altura máxima da lista */
+            min-height: 55vh; /* Altura máxima da lista */
             overflow-y: auto;   /* Só a lista rola */
             background: #fff;
             border-radius: 8px;
@@ -64,7 +65,7 @@
         }
         .task-title {
             display: block;
-            max-width: 250px; /* ajuste conforme necessário */
+            max-width: 230px; /* ajuste conforme necessário */
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -88,7 +89,7 @@
             align-items: center;
             justify-content: flex-end;
             min-height: 120px;
-            margin: 0 auto 48px auto;
+            margin: 8px auto 48px auto; /* diminua ainda mais o valor para aproximar do topo/lista */
             position: relative;
             top: 0;
             z-index: 2;
@@ -140,6 +141,26 @@
             border-color: #ffa726;
             box-shadow: 0 0 0 2px #ffa72633;
         }
+
+        /* Sidebar visível */
+        #task-sidebar.show {
+            right: 0 !important;
+        }
+
+        #sidebar-description {
+            white-space: pre-line;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .form-box {
+            /* ...existing code... */
+            margin: 8px auto 48px auto; /* diminua ainda mais o valor para aproximar do topo/lista */
+        }        h1 {
+            margin-top: 12px;
+            margin-bottom: 12px;
+            /* Você pode ajustar os valores conforme preferir */
+        }
     </style>
 </head>
 <body>
@@ -168,6 +189,23 @@
                             >
                             <div class="task-info">
                                 <strong class="task-title">{{ $task->title }}</strong>
+                                @if($task->date)
+                                    @php
+                                        $today = \Carbon\Carbon::today();
+                                        $date = $task->date->copy()->startOfDay();
+                                        $diff = $date->diffInDays($today, false);
+                                        if ($diff === -1) {
+                                            $dateLabel = 'Amanhã';
+                                        } elseif ($diff === 0) {
+                                            $dateLabel = 'Hoje';
+                                        } elseif ($diff === 1) {
+                                            $dateLabel = 'Ontem';
+                                        } else {
+                                            $dateLabel = $task->date->format('d/m/Y');
+                                        }
+                                    @endphp
+                                    <span style="color: #888; font-size: 0.9em;">({{ $dateLabel }})</span>
+                                @endif
                                 <br>
                                 {{ $task->description }}
                             </div>
@@ -175,8 +213,10 @@
                         <form action="{{ route('tasks.destroy', $task->id) }}" method="POST" style="margin-left: 12px;">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" style="background: #e74c3c; color: #fff; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer;">
-                                Excluir
+                            <button type="submit" style="background: #e74c3c; color: #fff; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24">
+                                    <path fill="currentColor" d="M9 3a3 3 0 0 1 6 0h5a1 1 0 1 1 0 2h-1v15a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V5H4a1 1 0 1 1 0-2h5Zm8 2H7v15a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V5Zm-5 3a1 1 0 0 1 2 0v8a1 1 0 1 1-2 0V8Zm-4 0a1 1 0 0 1 2 0v8a1 1 0 1 1-2 0V8Z"/>
+                                </svg>
                             </button>
                         </form>
                     </li>
@@ -203,9 +243,27 @@
                             <div class="task-info">
                                 <strong class="task-title">{{ $task->title }}</strong>
                                 @if($task->date)
-                                    <span style="color: #888; font-size: 0.9em;">({{ $task->date->format('d/m/Y') }})</span>
+                                    @php
+                                        $today = \Carbon\Carbon::today();
+                                        $date = $task->date->copy()->startOfDay();
+                                        $diff = $date->diffInDays($today, false);
+                                        if ($diff === -1) {
+                                            $dateLabel = 'Amanhã';
+                                        } elseif ($diff === 0) {
+                                            $dateLabel = 'Hoje';
+                                        } elseif ($diff === 1) {
+                                            $dateLabel = 'Ontem';
+                                        } else {
+                                            $dateLabel = $task->date->format('d/m/Y');
+                                        }
+                                    @endphp
+                                    <span style="color: #888; font-size: 0.9em;">({{ $dateLabel }})</span>
                                 @endif
-                                <span style="color: red; font-weight: bold;">[Atrasada]</span>
+                                @if($task->status === 'late')
+                                    <span style="color: red; font-weight: bold;">[Atrasada]</span>
+                                @elseif($task->status === 'completed')
+                                    <span style="color: green;">(Completa)</span>
+                                @endif
                                 <br>
                                 {{ $task->description }}
                             </div>
@@ -213,8 +271,10 @@
                         <form action="{{ route('tasks.destroy', $task->id) }}" method="POST" style="margin-left: 12px;">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" style="background: #e74c3c; color: #fff; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer;">
-                                Excluir
+                            <button type="submit" style="background: #e74c3c; color: #fff; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24">
+                                    <path fill="currentColor" d="M9 3a3 3 0 0 1 6 0h5a1 1 0 1 1 0 2h-1v15a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V5H4a1 1 0 1 1 0-2h5Zm8 2H7v15a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V5Zm-5 3a1 1 0 0 1 2 0v8a1 1 0 1 1-2 0V8Zm-4 0a1 1 0 0 1 2 0v8a1 1 0 1 1-2 0V8Z"/>
+                                </svg>
                             </button>
                         </form>
                     </li>
@@ -240,6 +300,23 @@
                             >
                             <div class="task-info">
                                 <strong class="task-title">{{ $task->title }}</strong>
+                                @if($task->date)
+                                    @php
+                                        $today = \Carbon\Carbon::today();
+                                        $date = $task->date->copy()->startOfDay();
+                                        $diff = $date->diffInDays($today, false);
+                                        if ($diff === -1) {
+                                            $dateLabel = 'Amanhã';
+                                        } elseif ($diff === 0) {
+                                            $dateLabel = 'Hoje';
+                                        } elseif ($diff === 1) {
+                                            $dateLabel = 'Ontem';
+                                        } else {
+                                            $dateLabel = $task->date->format('d/m/Y');
+                                        }
+                                    @endphp
+                                    <span style="color: #888; font-size: 0.9em;">({{ $dateLabel }})</span>
+                                @endif
                                 <span style="color: green;">(Completa)</span>
                                 <br>
                                 {{ $task->description }}
@@ -248,8 +325,10 @@
                         <form action="{{ route('tasks.destroy', $task->id) }}" method="POST" style="margin-left: 12px;">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" style="background: #e74c3c; color: #fff; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer;">
-                                Excluir
+                            <button type="submit" style="background: #e74c3c; color: #fff; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24">
+                                    <path fill="currentColor" d="M9 3a3 3 0 0 1 6 0h5a1 1 0 1 1 0 2h-1v15a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V5H4a1 1 0 1 1 0-2h5Zm8 2H7v15a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V5Zm-5 3a1 1 0 0 1 2 0v8a1 1 0 1 1-2 0V8Zm-4 0a1 1 0 0 1 2 0v8a1 1 0 1 1-2 0V8Z"/>
+                                </svg>
                             </button>
                         </form>
                     </li>
@@ -273,6 +352,27 @@
             </form>
         </div>
     </div>
+</div>
+<!-- Sidebar para detalhes da tarefa -->
+<div id="task-sidebar" style="
+    position: fixed;
+    top: 0; right: -400px;
+    width: 350px;
+    height: 100vh;
+    background: #fff;
+    box-shadow: -2px 0 12px #0002;
+    z-index: 9999;
+    transition: right 0.3s;
+    padding: 32px 24px 24px 24px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+">
+    <button id="close-sidebar" style="align-self: flex-end; background: none; border: none; font-size: 1.5em; cursor: pointer;">&times;</button>
+    <h2 id="sidebar-title"></h2>
+    <p id="sidebar-date" style="color: #888; margin: 0 0 8px 0;"></p>
+    <p id="sidebar-status" style="font-weight: bold; margin: 0 0 8px 0;"></p>
+    <div id="sidebar-description" style="white-space: pre-line;"></div>
 </div>
 <script>
     // Salva tarefa ao pressionar Enter em qualquer campo do formulário
@@ -303,6 +403,57 @@
             checkbox.closest('.task-box').classList.remove('selected');
         });
     });
+
+    // Função para abrir a sidebar com dados da tarefa
+    function openSidebar(task) {
+        document.getElementById('sidebar-title').textContent = task.title;
+        document.getElementById('sidebar-date').textContent = task.date ? 'Data: ' + task.dateLabel : '';
+        document.getElementById('sidebar-status').textContent = 'Status: ' + task.statusLabel;
+        document.getElementById('sidebar-description').textContent = task.description || '(Sem descrição)';
+        document.getElementById('task-sidebar').style.right = '0';
+    }
+    // Fecha a sidebar
+    document.getElementById('close-sidebar').onclick = function() {
+        document.getElementById('task-sidebar').style.right = '-400px';
+    };
+
+    // Adiciona evento de clique nas tarefas
+    document.querySelectorAll('.task-box').forEach(function(box) {
+        box.addEventListener('click', function(e) {
+            // Evita abrir ao clicar no botão Excluir ou checkbox
+            if (e.target.tagName === 'BUTTON' || e.target.type === 'checkbox') return;
+
+            // Busca dados da tarefa nos elementos HTML
+            const title = box.querySelector('.task-title')?.textContent || '';
+            const description = box.querySelector('.task-info')?.childNodes[box.querySelector('.task-info').childNodes.length-1]?.textContent.trim() || '';
+            const dateSpan = box.querySelector('.task-info span');
+            const dateLabel = dateSpan ? dateSpan.textContent.replace(/[()]/g, '') : '';
+            let statusLabel = '';
+            if (box.classList.contains('completed')) statusLabel = 'Completa';
+            else if (box.classList.contains('late')) statusLabel = 'Atrasada';
+            else statusLabel = 'Pendente';
+
+            openSidebar({
+                title: title,
+                date: dateLabel,
+                dateLabel: dateLabel,
+                statusLabel: statusLabel,
+                description: description
+            });
+        });
+    });
 </script>
+<style>
+    /* Sidebar visível */
+    #task-sidebar.show {
+        right: 0 !important;
+    }
+    @media (max-width: 500px) {
+        #task-sidebar {
+            width: 98vw;
+            padding: 18px 8px 8px 8px;
+        }
+    }
+</style>
 </body>
 </html>

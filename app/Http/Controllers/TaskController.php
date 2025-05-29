@@ -14,18 +14,19 @@ class TaskController extends Controller
     {
         $tasks = Task::all();
 
-        // Atualiza status para 'late' se a data for passada e não estiver concluída
         foreach ($tasks as $task) {
-            if ($task->date && $task->status !== 'completed' && $task->date->isPast()) {
-                if ($task->status !== 'late') {
-                    $task->status = 'late';
+            if ($task->date && $task->status !== 'completed') {
+                $today = \Carbon\Carbon::today();
+                $taskDate = $task->date->copy()->startOfDay();
+                if ($taskDate->lt($today)) {
+                    if ($task->status !== 'late') {
+                        $task->status = 'late';
+                        $task->save();
+                    }
+                } elseif ($task->status === 'late') {
+                    $task->status = 'unfinished';
                     $task->save();
                 }
-            }
-            // Se não está atrasada e não está concluída, volta para 'unfinished'
-            if ($task->status === 'late' && $task->date && !$task->date->isPast()) {
-                $task->status = 'unfinished';
-                $task->save();
             }
         }
 
