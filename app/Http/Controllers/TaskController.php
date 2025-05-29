@@ -13,6 +13,22 @@ class TaskController extends Controller
     public function index()
     {
         $tasks = Task::all();
+
+        // Atualiza status para 'late' se a data for passada e não estiver concluída
+        foreach ($tasks as $task) {
+            if ($task->date && $task->status !== 'completed' && $task->date->isPast()) {
+                if ($task->status !== 'late') {
+                    $task->status = 'late';
+                    $task->save();
+                }
+            }
+            // Se não está atrasada e não está concluída, volta para 'unfinished'
+            if ($task->status === 'late' && $task->date && !$task->date->isPast()) {
+                $task->status = 'unfinished';
+                $task->save();
+            }
+        }
+
         return view('tasks.index', compact('tasks'));
     }
 
@@ -32,11 +48,10 @@ class TaskController extends Controller
         $data = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'completed' => 'nullable|boolean',
+            'date' => 'nullable|date',
         ]);
 
-        // Se o checkbox não for marcado, completed não vem no request
-        $data['completed'] = $request->has('completed');
+        $data['status'] = 'unfinished';
 
         Task::create($data);
 
@@ -65,7 +80,8 @@ class TaskController extends Controller
     public function update(Request $request, $id)
     {
         $task = Task::findOrFail($id);
-        $task->completed = $request->has('completed');
+        // Alterna status entre 'completed' e 'unfinished'
+        $task->status = $task->status === 'completed' ? 'unfinished' : 'completed';
         $task->save();
 
         return redirect()->route('tasks.index');

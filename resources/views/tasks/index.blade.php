@@ -7,26 +7,28 @@
         html, body {
             margin: 0;
             padding: 0;
-            /* Remova height: 100% daqui */
+            height: 100%; /* Adicione esta linha */
         }
         body {
             font-family: Arial, sans-serif;
             text-align: center;
-            /* Remova height: 100vh e min-height: 100vh daqui */
             display: flex;
             flex-direction: column;
+            min-height: 100vh; /* Adicione esta linha */
         }
         .container-todo {
             display: flex;
             flex-direction: column;
-            /* Remova height: 90vh e min-height: 400px daqui */
             max-width: 600px;
             margin: 0 auto;
             width: 95vw;
+            flex: 1; /* Adicione esta linha */
+            min-height: 80vh; /* Adicione esta linha para garantir altura mínima */
+            justify-content: flex-end; /* Adicione esta linha para empurrar o form para baixo */
         }
         .tasks-list-container {
-            flex: 3;
-            height: 55%;
+            flex: 1; /* Altere para ocupar o espaço disponível */
+            height: auto; /* Remova ou ajuste se necessário */
             display: flex;
             justify-content: center;
             align-items: flex-start;
@@ -41,7 +43,8 @@
             min-width: 0;
             margin: 0 auto;
             text-align: left;
-            max-height: 320px; /* Altura máxima da lista */
+            max-height: 45vh; /* Altura máxima da lista */
+            min-height: 45vh; /* Altura máxima da lista */
             overflow-y: auto;   /* Só a lista rola */
             background: #fff;
             border-radius: 8px;
@@ -59,11 +62,19 @@
             flex: 1;
             margin-left: 12px;
         }
+        .task-title {
+            display: block;
+            max-width: 250px; /* ajuste conforme necessário */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
         .task-checkbox {
             margin-right: 8px;
         }
         .form-box {
-            flex: 1;
+            flex: none; /* Garante que o form-box não cresça */
             border: 1px solid #ccc;
             padding: 16px;
             width: 100%;
@@ -101,6 +112,34 @@
                 min-width: 0;
             }
         }
+
+        /* Novos estilos para as tarefas */
+        .task-box {
+            background: #fff;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+            padding: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .task-box:hover {
+            background: #f1f1f1;
+        }
+        .task-box.completed {
+            opacity: 0.6;
+        }
+        .task-box.late {
+            background: #ffeaea;
+            border-color: #ffa726;
+        }
+        .task-box.selected {
+            border-color: #ffa726;
+            box-shadow: 0 0 0 2px #ffa72633;
+        }
     </style>
 </head>
 <body>
@@ -110,8 +149,12 @@
         <div class="tasks-list-container">
             <ul>
                 {{-- Tarefas não concluídas --}}
-                @foreach ($tasks->where('completed', false) as $task)
-                    <li>
+                @foreach ($tasks->where('status', 'unfinished') as $task)
+                    <li class="task-box
+                        @if($task->status === 'late') late
+                        @elseif($task->status === 'completed') completed
+                        @endif
+                    ">
                         <form action="{{ route('tasks.update', $task->id) }}" method="POST" style="display: flex; align-items: center; margin: 0; flex: 1;">
                             @csrf
                             @method('PUT')
@@ -121,10 +164,48 @@
                                 name="completed"
                                 value="1"
                                 onchange="this.form.submit()"
-                                {{ $task->completed ? 'checked' : '' }}
+                                {{ $task->status === 'completed' ? 'checked' : '' }}
                             >
                             <div class="task-info">
-                                <strong>{{ $task->title }}</strong>
+                                <strong class="task-title">{{ $task->title }}</strong>
+                                <br>
+                                {{ $task->description }}
+                            </div>
+                        </form>
+                        <form action="{{ route('tasks.destroy', $task->id) }}" method="POST" style="margin-left: 12px;">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" style="background: #e74c3c; color: #fff; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer;">
+                                Excluir
+                            </button>
+                        </form>
+                    </li>
+                @endforeach
+
+                {{-- Tarefas atrasadas --}}
+                @foreach ($tasks->where('status', 'late') as $task)
+                    <li class="task-box
+                        @if($task->status === 'late') late
+                        @elseif($task->status === 'completed') completed
+                        @endif
+                    " style="background: #ffeaea;">
+                        <form action="{{ route('tasks.update', $task->id) }}" method="POST" style="display: flex; align-items: center; margin: 0; flex: 1;">
+                            @csrf
+                            @method('PUT')
+                            <input
+                                type="checkbox"
+                                class="task-checkbox"
+                                name="completed"
+                                value="1"
+                                onchange="this.form.submit()"
+                                {{ $task->status === 'completed' ? 'checked' : '' }}
+                            >
+                            <div class="task-info">
+                                <strong class="task-title">{{ $task->title }}</strong>
+                                @if($task->date)
+                                    <span style="color: #888; font-size: 0.9em;">({{ $task->date->format('d/m/Y') }})</span>
+                                @endif
+                                <span style="color: red; font-weight: bold;">[Atrasada]</span>
                                 <br>
                                 {{ $task->description }}
                             </div>
@@ -140,8 +221,12 @@
                 @endforeach
 
                 {{-- Tarefas concluídas --}}
-                @foreach ($tasks->where('completed', true) as $task)
-                    <li style="opacity: 0.6;">
+                @foreach ($tasks->where('status', 'completed') as $task)
+                    <li class="task-box
+                        @if($task->status === 'late') late
+                        @elseif($task->status === 'completed') completed
+                        @endif
+                    " style="opacity: 0.6;">
                         <form action="{{ route('tasks.update', $task->id) }}" method="POST" style="display: flex; align-items: center; margin: 0; flex: 1;">
                             @csrf
                             @method('PUT')
@@ -151,10 +236,10 @@
                                 name="completed"
                                 value="1"
                                 onchange="this.form.submit()"
-                                {{ $task->completed ? 'checked' : '' }}
+                                {{ $task->status === 'completed' ? 'checked' : '' }}
                             >
                             <div class="task-info">
-                                <strong>{{ $task->title }}</strong>
+                                <strong class="task-title">{{ $task->title }}</strong>
                                 <span style="color: green;">(Completa)</span>
                                 <br>
                                 {{ $task->description }}
@@ -177,10 +262,14 @@
         </div>
         <!-- Formulário para adicionar nova tarefa -->
         <div class="form-box">
-            <form action="{{ route('tasks.store') }}" method="POST" style="width: 100%; display: flex; flex-direction: column; gap: 10px;" onsubmit="return false;">
+            <form action="{{ route('tasks.store') }}" method="POST" style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
                 @csrf
                 <input type="text" name="title" id="title" required placeholder="Título" autocomplete="off" style="margin-bottom: 4px;">
                 <input type="text" name="description" id="description" placeholder="Descrição" autocomplete="off" style="margin-bottom: 0; height: 75px;">
+                <div style="display: flex; width: 100%; gap: 8px; align-items: center;">
+                    <input type="date" name="date" id="date" placeholder="Data" style="margin-bottom: 0; flex: 1; height: 40px;">
+                    <button type="submit" style="margin-top: 0; min-width: 110px; height: 40px;">Adicionar</button>
+                </div>
             </form>
         </div>
     </div>
@@ -195,6 +284,24 @@
                 form.submit();
             }
         }
+    });
+
+    document.querySelectorAll('.task-checkbox').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            document.querySelectorAll('.task-box').forEach(function(box) {
+                box.classList.remove('selected');
+            });
+            if (checkbox.checked) {
+                checkbox.closest('.task-box').classList.add('selected');
+            }
+        });
+        // Também destaca ao focar
+        checkbox.addEventListener('focus', function() {
+            checkbox.closest('.task-box').classList.add('selected');
+        });
+        checkbox.addEventListener('blur', function() {
+            checkbox.closest('.task-box').classList.remove('selected');
+        });
     });
 </script>
 </body>

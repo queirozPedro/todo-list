@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('title');
             $table->text('description')->nullable();
-            $table->boolean('completed')->default(false);
+            $table->dateTime('date')->nullable();
+            $table->string('status')->default('unfinished'); // 'late', 'unfinished', 'completed'
             $table->timestamps();
         });
     }
