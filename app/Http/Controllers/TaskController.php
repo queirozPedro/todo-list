@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Task as Taks; // Corrected the model name to Task
+use App\Models\Task as Task; 
 
 class TaskController extends Controller
 {
@@ -12,7 +12,7 @@ class TaskController extends Controller
      */
     public function index()
     {
-        $tasks = Taks::all();
+        $tasks = Task::all();
         return view('tasks.index', compact('tasks'));
     }
 
@@ -29,7 +29,18 @@ class TaskController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $data = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'completed' => 'nullable|boolean',
+        ]);
+
+        // Se o checkbox não for marcado, completed não vem no request
+        $data['completed'] = $request->has('completed');
+
+        Task::create($data);
+
+        return redirect()->route('tasks.index');
     }
 
     /**
@@ -51,9 +62,13 @@ class TaskController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, $id)
     {
-        //
+        $task = Task::findOrFail($id);
+        $task->completed = $request->has('completed');
+        $task->save();
+
+        return redirect()->route('tasks.index');
     }
 
     /**
@@ -61,6 +76,8 @@ class TaskController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $task = Task::findOrFail($id);
+        $task->delete();
+        return redirect()->route('tasks.index');
     }
 }
